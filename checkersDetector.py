@@ -258,4 +258,4 @@ class CheckersDetector():
             cv2.imwrite(self.debugOutputPath + "\\"+str(self.counter) + ".jpg",img)
             self.counter += 1
         
-        return (fl,img)
+        return fl
