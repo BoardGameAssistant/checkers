@@ -140,14 +140,9 @@ class CheckersDetector():
             points[i] = newLine
         
         # we dont need lines with 1 or 2 points
-        counter = 0 
-        for i in range(len(points)):
-            counter+=len(points[i])
-        
-        counter = int(counter/len(points))
-        tmp = []
+        tmp=[]
         for point in points:
-            if len(point) >= counter/2:
+            if len(point) >= 7:
                 tmp.append(point)
         points = tmp
         
@@ -160,19 +155,16 @@ class CheckersDetector():
         mean = np.mean(np.array(diffs))
         res = []
         
-        epsilon = mean/3
-        for i in range(len(points)-1):
-            
-            if i == len(line)-1 :
-                if self._distance(points[i][0], points[i-1][0])  >= mean - epsilon:
-                    res.append(points[i])
-                continue
-            if i == 0 :
-                if self._distance(points[i][0], points[i+1][0])  >= mean - epsilon:
-                    res.append(points[i])
-                continue
-            if self._distance(points[i][0], points[i+1][0]) >= mean - epsilon or  self._distance(points[i][0], points[i-1][0])  >= mean - epsilon:
+        res = []
+        eps = 20
+        for i in range(len(points) - 2):
+            if self._distance(points[i][0],points[i+1][0]) >= self._distance(points[i+1][0],points[i+2][0]) - eps:
                 res.append(points[i])
+        ln = len(points)
+        if self._distance(points[ln-3][0],points[ln-2][0]) >= self._distance(points[ln-3][0],points[ln-2][0]) - eps:
+                res.append(points[ln-2])
+        if self._distance(points[ln-2][0],points[ln-1][0]) >= self._distance(points[ln-4][0],points[ln-5][0]) - eps:
+                res.append(points[ln-1])  
         return res
 
     def _clusterPoints(self, points):
@@ -216,11 +208,12 @@ class CheckersDetector():
 
 
     def getGameField(self, img, visualize = False):
+        img = cv2.resize(img, (640,640))
         gray= cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray, (5,5), 0)
         edges = cv2.Canny(blur,50,150,apertureSize = 3)
         minLineLength=100
-        lines = cv2.HoughLinesP(image=edges,rho=1,theta=np.pi/180, threshold=90,lines=np.array([]), minLineLength=minLineLength,maxLineGap=90)
+        lines = cv2.HoughLinesP(image=edges,rho=1,theta=np.pi/180, threshold=80,lines=np.array([]), minLineLength=minLineLength,maxLineGap=90)
 
         #detecting grid
         hLines, vLines = self._hvSplit(lines)
@@ -258,4 +251,4 @@ class CheckersDetector():
             cv2.imwrite(self.debugOutputPath + "\\"+str(self.counter) + ".jpg",img)
             self.counter += 1
         
-        return fl
+        return (fl,img)
