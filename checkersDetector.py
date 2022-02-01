@@ -9,7 +9,9 @@ import math
 import scipy.spatial as spatial
 import scipy.cluster as cluster
 from collections import defaultdict
-
+import checkersAIWrapper as ai
+from PythonCheckersAI.minimax.algorithm import minimaxForWhite,minimaxForRed
+from PythonCheckersAI.checkers.constants import RED, WHITE
 
 class CheckersDetector():
     
@@ -206,8 +208,60 @@ class CheckersDetector():
                     
         return res 
 
+    def _visualizeSuggestions():
+        pass
 
-    def getGameField(self, img, visualize = False):
+    def _getSuggestions(self,field, grid, img,roll):
+        game = ai.CustomGame(None, field,roll)
+        
+        _, newBoardForBlack = minimaxForRed(game.get_board(), 4, RED, game)
+        _, newBoardForWhite = minimaxForWhite(game.get_board(), 4, WHITE, game)
+        newBoardForBlack = newBoardForBlack.convertBoard()
+        newBoardForWhite = newBoardForWhite.convertBoard()
+
+        centerx = (np.int32(grid[1][0][0]) + np.int32(grid[0][1][0]))/2
+        centery = (np.int32(grid[1][0][1]) + np.int32(grid[0][0][1]))/2
+        color = img[np.int32(centerx),np.int32(centery)]
+        colors = [(0,0,0),(255,255,255)] # 0 - black  1 - white 
+        
+        if color[0] > 100 or color[1] > 100 or color[2] > 100:
+            switch = 1 
+        else:
+            switch = 0 
+        resWhite = np.zeros((640,640,3), np.uint8)
+        resBlack = np.zeros((640,640,3), np.uint8)
+        
+        for y in range(8):
+            for x in range(8):
+                
+                if field[y][x] != newBoardForWhite[y][x]: 
+                    cv2.rectangle(resWhite,(x*80,y*80),((x+1)*80,(y+1)*80), (0,255,0), -1 )
+                else:
+                    cv2.rectangle(resWhite,(x*80,y*80),((x+1)*80,(y+1)*80), colors[switch],-1 )
+                
+                if field[y][x] != newBoardForBlack[y][x]:
+                    cv2.rectangle(resBlack,(x*80,y*80),((x+1)*80,(y+1)*80), (0,255,0), -1 )
+                else:
+                    cv2.rectangle(resBlack,(x*80,y*80),((x+1)*80,(y+1)*80), colors[switch],-1 )
+                
+                switch = (switch + 1) %2
+            switch = (switch + 1) %2
+        
+        for y in range(8):
+            for x in range(8):
+                if newBoardForWhite[y][x] == 1:
+                    cv2.circle(resWhite,(80*x+40,80*y+40),35,(105,105,105),-1)
+                elif newBoardForWhite[y][x] == 2:
+                    cv2.circle(resWhite,(80*x+40,80*y+40),35,(255,255,255),-1)
+                
+                if newBoardForBlack[y][x] == 1:
+                    cv2.circle(resBlack,(80*x+40,80*y+40),35,(105,105,105),-1)
+                elif newBoardForBlack[y][x] == 2:
+                    cv2.circle(resBlack,(80*x+40,80*y+40),35,(255,255,255),-1)
+                
+        return (resWhite,resBlack) 
+
+    def getGameField(self, img, visualize = False, roll = False):
         img = cv2.resize(img, (640,640))
         gray= cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray, (5,5), 0)
@@ -235,6 +289,8 @@ class CheckersDetector():
         else:
             fl = field
 
+        resWhite, resBlack = self._getSuggestions(field,grid,img,roll)
+
         if self.debug:
             a,_, = checkers.shape
             for i in range(a):
@@ -251,4 +307,4 @@ class CheckersDetector():
             cv2.imwrite(self.debugOutputPath + "\\"+str(self.counter) + ".jpg",img)
             self.counter += 1
         
-        return (fl,img)
+        return (fl, img, resWhite, resBlack)
