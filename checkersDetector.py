@@ -1,17 +1,13 @@
-from yolov5 import detect
 import torch
-import pandas as pd 
 import numpy as np 
 import cv2
-import os
-from matplotlib import pyplot as plt
 import math
 import scipy.spatial as spatial
 import scipy.cluster as cluster
 from collections import defaultdict
-import checkersAIWrapper as ai
-from PythonCheckersAI.minimax.algorithm import minimaxForWhite,minimaxForRed
-from PythonCheckersAI.checkers.constants import RED, WHITE
+from . import checkersAIWrapper as ai
+from .PythonCheckersAI.minimax.algorithm import minimaxForWhite,minimaxForRed
+from .PythonCheckersAI.checkers.constants import RED, WHITE
 
 class CheckersDetector():
     

@@ -1,8 +1,8 @@
-from PythonCheckersAI.checkers import board
-from PythonCheckersAI.checkers.board  import Board
-from PythonCheckersAI.checkers.piece import Piece
-from PythonCheckersAI.checkers.game import Game
-from PythonCheckersAI.checkers.constants import BLACK, ROWS, RED, SQUARE_SIZE, COLS, WHITE
+from .PythonCheckersAI.checkers import board
+from .PythonCheckersAI.checkers.board  import Board
+from .PythonCheckersAI.checkers.piece import Piece
+from .PythonCheckersAI.checkers.game import Game
+from .PythonCheckersAI.checkers.constants import RED, WHITE
 import numpy as np 
 
 
