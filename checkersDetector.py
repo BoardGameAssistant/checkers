@@ -59,7 +59,7 @@ class CheckersDetector():
     def _hvSplit(self, lines):
         hLines= []
         vLines= []
-        const = 100
+        const = 70
         for line in lines:
             if abs(line[0][0]-line[0][2])< const:
                 hLines.append(line)
@@ -94,7 +94,6 @@ class CheckersDetector():
         # TODO figure out smarter way to determine the epsilon
         epsilon = 10 
         lineStart = 0
-        print(points.shape)
         a , _ = points.shape 
         index = 0 
         while index < a - 1:
@@ -184,7 +183,7 @@ class CheckersDetector():
 
         centerx = (np.int32(grid[1][0][0]) + np.int32(grid[0][1][0]))/2
         centery = (np.int32(grid[1][0][1]) + np.int32(grid[0][0][1]))/2
-        color = img[np.int32(centerx),np.int32(centery)]
+        color = img[np.int32(centery),np.int32(centerx)]
         colors = [(0,0,0),(255,255,255)] # 0 - black  1 - white 
         
         if color[0] > 100 or color[1] > 100 or color[2] > 100:
@@ -221,7 +220,7 @@ class CheckersDetector():
 
         centerx = (np.int32(grid[1][0][0]) + np.int32(grid[0][1][0]))/2
         centery = (np.int32(grid[1][0][1]) + np.int32(grid[0][0][1]))/2
-        color = img[np.int32(centerx),np.int32(centery)]
+        color = img[np.int32(centery),np.int32(centerx)]
         colors = [(0,0,0),(255,255,255)] # 0 - black  1 - white 
         
         if color[0] > 100 or color[1] > 100 or color[2] > 100:
@@ -267,7 +266,7 @@ class CheckersDetector():
         blur = cv2.GaussianBlur(gray, (5,5), 0)
         edges = cv2.Canny(blur,50,150,apertureSize = 3)
         minLineLength=100
-        lines = cv2.HoughLinesP(image=edges,rho=1,theta=np.pi/180, threshold=80,lines=np.array([]), minLineLength=minLineLength,maxLineGap=90)
+        lines = cv2.HoughLinesP(image=edges,rho=1,theta=np.pi/180, threshold=90,lines=np.array([]), minLineLength=minLineLength,maxLineGap=90)
 
         #detecting grid
         hLines, vLines = self._hvSplit(lines)
