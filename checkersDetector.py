@@ -55,7 +55,7 @@ class CheckersDetector():
     def _hvSplit(self, lines):
         hLines= []
         vLines= []
-        const = 10
+        const = 70
         for line in lines:
             if abs(line[0][0]-line[0][2])< const:
                 hLines.append(line)
@@ -199,7 +199,7 @@ class CheckersDetector():
                 if field[y][x] == 1:
                     cv2.circle(res,(80*x+40,80*y+40),35,(105,105,105),-1)
                 elif field[y][x] == 2:
-                    cv2.circle(res,(80*x+40,80*y+40),35,(255,255,255),-1)
+                    cv2.circle(res,(80*x+40,80*y+40),35,(230,230,230),-1)
                     
         return res 
 
@@ -308,17 +308,17 @@ class CheckersDetector():
         minLineLength=100
 
         cv2.imwrite("/resdir/edges.jpg", edges)
-
         horizontal = np.copy(edges)
         vertical = np.copy(edges)
 
-        SE = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 1))
+        SE = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 1))
         horizontal = cv2.dilate(horizontal, SE, iterations=1)
 
-        SE = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 10))
+        SE = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 5))
         vertical = cv2.dilate(vertical, SE, iterations=1)
         
         edges_new = horizontal + vertical
+        cv2.imwrite("/resdir/edges_n.jpg", edges_new)
 
         counters_img = img.copy()
         contours, _ = cv2.findContours(edges_new, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS)
@@ -358,10 +358,10 @@ class CheckersDetector():
 
         cv2.imwrite("/resdir/edges_ex.jpg", horizontal + vertical)
 
-        SE = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 1))
+        SE = cv2.getStructuringElement(cv2.MORPH_RECT, (50, 1))
         horizontal = cv2.dilate(horizontal, SE, iterations=1)
 
-        SE = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 25))
+        SE = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 40))
         vertical = cv2.dilate(vertical, SE, iterations=1)
         
         edges = horizontal + vertical
@@ -409,4 +409,6 @@ class CheckersDetector():
             cv2.imwrite(self.debugOutputPath + "\\"+str(self.counter) + ".jpg",cropped_img)
             self.counter += 1
         
+        cv2.imwrite("/resdir/fl.jpg", fl)
+
         return (fl, cropped_img, resWhite, resBlack)
