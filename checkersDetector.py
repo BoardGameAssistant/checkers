@@ -55,7 +55,7 @@ class CheckersDetector():
     def _hvSplit(self, lines):
         hLines= []
         vLines= []
-        const = 70
+        const = 10
         for line in lines:
             if abs(line[0][0]-line[0][2])< const:
                 hLines.append(line)
@@ -256,13 +256,120 @@ class CheckersDetector():
                 
         return (resWhite,resBlack) 
 
+    def draw_lines(self, img, linesP):
+        lineimage = img.copy()
+        if linesP is not None:    
+            horizontalLines = [line[0] for line in linesP if abs(line[0][2] - line[0][0]) > abs(line[0][3] - line[0][1])]
+            verticalLines = [line[0] for line in linesP if abs(line[0][2] - line[0][0]) < abs(line[0][3] - line[0][1])]
+            
+            count = 0
+            for i in range(0, len(horizontalLines)):
+                l = horizontalLines[i]
+                horizontalLines[i] = l
+                cv2.line(lineimage, (l[0], l[1]), (l[2], l[3]), (0, 0, 255), 1, cv2.LINE_AA)
+                count += 1
+                
+            for i in range(0, len(verticalLines)):
+                l = verticalLines[i]
+                verticalLines[i] = l
+                cv2.line(lineimage, (l[0], l[1]), (l[2], l[3]), (255, 0, 0), 1, cv2.LINE_AA)
+                count += 1
+
+        cv2.imwrite("/resdir/lines.jpg",lineimage)
+
+        
+    def warp_transform(self, img, max_contour):
+        width = 640
+        height = 640
+        points = [[point[0], point[1]] for [point] in max_contour]
+        coords_sorted = sorted(points, key=lambda elem: elem[0]+elem[1])
+        top_left = coords_sorted[0]
+        bottom_right = coords_sorted[3]
+        bottom_left = coords_sorted[2] 
+        top_right = coords_sorted[1]
+
+        if abs(coords_sorted[1][0] - coords_sorted[0][0]) < abs(coords_sorted[1][0] - coords_sorted[3][0]):
+            bottom_left = coords_sorted[1]
+            top_right = coords_sorted[2]
+
+        OFFSET = 40
+        input = np.float32([top_left, top_right, bottom_right, bottom_left])
+        output = np.float32([[OFFSET,OFFSET], [width-1-OFFSET,OFFSET], [width-1-OFFSET,height-1-OFFSET], [OFFSET,height-1-OFFSET]])
+        matrix = cv2.getPerspectiveTransform(input,output)
+        imgOutput = cv2.warpPerspective(img, matrix, (width,height), cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=(0,0,0))
+
+        cv2.imwrite("/resdir/edges_warped.jpg", imgOutput)
+        return imgOutput
+
     def getGameField(self, img, visualize = False, roll = False):
         img = cv2.resize(img, (640,640))
-        gray= cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        edges = cv2.Canny(gray,50,150,apertureSize = 3)
+        minLineLength=100
+
+        cv2.imwrite("/resdir/edges.jpg", edges)
+
+        horizontal = np.copy(edges)
+        vertical = np.copy(edges)
+
+        SE = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 1))
+        horizontal = cv2.dilate(horizontal, SE, iterations=1)
+
+        SE = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 10))
+        vertical = cv2.dilate(vertical, SE, iterations=1)
+        
+        edges_new = horizontal + vertical
+
+        counters_img = img.copy()
+        contours, _ = cv2.findContours(edges_new, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS)
+        approx_area = 0
+        max_contour = None
+        for contour in contours:
+            epsilon = 0.1*cv2.arcLength(contour,True)
+            approx = cv2.approxPolyDP(contour,epsilon,True)
+
+            area = cv2.contourArea(approx)
+            if area > approx_area:
+                approx_area = area
+                max_contour = approx
+            
+        counter_img = counters_img.copy()
+        counter_img = cv2.drawContours(counters_img.copy(), [max_contour], 0, (0,255,0), 3)
+        cv2.imwrite("/resdir/counters_max.jpg",counter_img)
+
+        cropped_img = img.copy()
+        if approx_area > 320*320 and len(max_contour) == 4: 
+            cropped_img = self.warp_transform(img, max_contour)
+        
+        gray = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray, (5,5), 0)
         edges = cv2.Canny(blur,50,150,apertureSize = 3)
-        minLineLength=100
+
+        horizontal = np.copy(edges)
+        vertical = np.copy(edges)
+
+        horizontalSize = 10
+        horizontalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (horizontalSize, 1))
+        horizontal = cv2.morphologyEx(horizontal, cv2.MORPH_OPEN, horizontalStructure)
+
+        verticalSize = 10
+        verticalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (1, verticalSize))
+        vertical = cv2.morphologyEx(vertical, cv2.MORPH_OPEN, verticalStructure)
+
+        cv2.imwrite("/resdir/edges_ex.jpg", horizontal + vertical)
+
+        SE = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 1))
+        horizontal = cv2.dilate(horizontal, SE, iterations=1)
+
+        SE = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 25))
+        vertical = cv2.dilate(vertical, SE, iterations=1)
+        
+        edges = horizontal + vertical
+
+        cv2.imwrite("/resdir/edges_new.jpg", edges)
+
         lines = cv2.HoughLinesP(image=edges,rho=1,theta=np.pi/180, threshold=90,lines=np.array([]), minLineLength=minLineLength,maxLineGap=90)
+        self.draw_lines(cropped_img, lines)
 
         #detecting grid
         hLines, vLines = self._hvSplit(lines)
@@ -272,7 +379,7 @@ class CheckersDetector():
         grid = self._correctPoints(grid)
 
         #detecting checkers
-        res = self.model(img)
+        res = self.model(cropped_img)
         df = res.pandas().xyxy[0] 
         df = df[df.confidence>0.5] 
         df = df.drop(columns =["confidence","name"])
@@ -280,11 +387,11 @@ class CheckersDetector():
         field = self._placeCheckers(grid,checkers)
 
         if visualize:
-            fl = self._visualize(img,grid,field)
+            fl = self._visualize(cropped_img,grid,field)
         else:
             fl = field
 
-        resWhite, resBlack = self._getSuggestions(field,grid,img,roll)
+        resWhite, resBlack = self._getSuggestions(field,grid,cropped_img,roll)
 
         a,_, = checkers.shape
         for i in range(a):
@@ -292,14 +399,14 @@ class CheckersDetector():
                 color = (255,0,0)
             else:
                 color = (0,0,255)
-            cv2.rectangle(img, (np.int32(checkers[i][0]),np.int32(checkers[i][1])),(np.int32(checkers[i][2]),np.int32(checkers[i][3])), color = color)
+            cv2.rectangle(cropped_img, (np.int32(checkers[i][0]),np.int32(checkers[i][1])),(np.int32(checkers[i][2]),np.int32(checkers[i][3])), color = color)
         for j in range(len(grid)):
             color = (np.random.randint(0,255),np.random.randint(0,255),np.random.randint(0,255))
             for i in range(len(grid[j])):
-                cv2.circle(img, (np.int32(grid[j][i][0]),np.int32(grid[j][i][1])), radius=4, color=color, thickness=-1)   
+                cv2.circle(cropped_img, (np.int32(grid[j][i][0]),np.int32(grid[j][i][1])), radius=4, color=color, thickness=-1)   
 
         if self.debug:
-            cv2.imwrite(self.debugOutputPath + "\\"+str(self.counter) + ".jpg",img)
+            cv2.imwrite(self.debugOutputPath + "\\"+str(self.counter) + ".jpg",cropped_img)
             self.counter += 1
         
-        return (fl, img, resWhite, resBlack)
+        return (fl, cropped_img, resWhite, resBlack)
